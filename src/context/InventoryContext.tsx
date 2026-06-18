@@ -1,13 +1,21 @@
 import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
-import { fetchProductos, fetchProveedores, fetchMovimientos, addProducto as addProductoSupabase, addMovimiento as addMovimientoSupabase } from '../lib/supabase-queries';
+import {
+  fetchProductos, fetchProveedores, fetchMovimientos,
+  addProducto as addProductoSupabase, updateProducto as updateProductoSupabase,
+  deleteProducto as deleteProductoSupabase, addMovimiento as addMovimientoSupabase,
+  fetchProductoStockActual,
+  addProveedor as addProveedorSupabase, updateProveedor as updateProveedorSupabase,
+  deleteProveedor as deleteProveedorSupabase,
+} from '../lib/supabase-queries';
+import type { Database } from '../lib/supabase';
 
 export type ProductCategory = 'barras' | 'rieles' | 'soportes' | 'tornillería' | 'otros';
 export type ProductStatus = 'activo' | 'inactivo' | 'descontinuado';
 export type MovementType =
   | 'entrada por compra'
   | 'salida ML Full/Flex/Envíos'
-  | 'salida sitio web'
-  | 'salida WhatsApp'
+  | 'salida Apanio'
+  | 'salida directa'
   | 'salida Estado'
   | 'ajuste de inventario'
   | 'merma';
@@ -42,6 +50,8 @@ export type Supplier = {
   nombre: string;
   rut: string;
   contacto: string;
+  telefono: string;
+  ciudad: string;
   tiempoEntregaPromedio: string;
   productos: string[];
 };
@@ -53,136 +63,18 @@ type InventoryContextType = {
   lowStockProducts: Product[];
   lowStockCount: number;
   isLoading: boolean;
+  isLoadingMovements: boolean;
   error: string | null;
-  addMovement: (movement: Omit<Movement, 'id'>) => void;
-  addProducts: (items: Product[]) => void;
-  updateProduct: (id: number, patch: Partial<Product>) => void;
-  deleteProduct: (id: number) => void;
+  reloadMovimientos: (desde?: string, hasta?: string) => Promise<void>;
+  addMovement: (movement: Omit<Movement, 'id'>) => Promise<void>;
+  addProducts: (items: Product[]) => Promise<void>;
+  updateProduct: (id: number, patch: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: number) => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'productos'>) => Promise<void>;
+  updateSupplier: (id: number, patch: Partial<Omit<Supplier, 'id' | 'productos'>>) => Promise<void>;
+  deleteSupplier: (id: number) => Promise<void>;
   findSupplierByProduct: (product: Product) => Supplier | undefined;
 };
-
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    sku: 'CLZ-BAR-001',
-    nombre: 'Barra de closet 3 m blanca',
-    categoria: 'barras',
-    proveedor: 'ClosetPro SpA',
-    costoCompra: 4200,
-    precioML: 10990,
-    precioSitioWeb: 9990,
-    precioEstado: 11990,
-    stockActual: 18,
-    stockMinimo: 10,
-    unidadMedida: 'unidad',
-    estado: 'activo',
-  },
-  {
-    id: 2,
-    sku: 'CLZ-BAR-002',
-    nombre: 'Barra ovalada cromada 2,5 m',
-    categoria: 'barras',
-    proveedor: 'MetalFer Ltda.',
-    costoCompra: 5600,
-    precioML: 13990,
-    precioSitioWeb: 12990,
-    precioEstado: 14990,
-    stockActual: 7,
-    stockMinimo: 12,
-    unidadMedida: 'unidad',
-    estado: 'activo',
-  },
-  {
-    id: 3,
-    sku: 'CLZ-RIE-001',
-    nombre: 'Riel superior aluminio 3 m',
-    categoria: 'rieles',
-    proveedor: 'Alumarket',
-    costoCompra: 6800,
-    precioML: 15990,
-    precioSitioWeb: 14990,
-    precioEstado: 16990,
-    stockActual: 5,
-    stockMinimo: 8,
-    unidadMedida: 'unidad',
-    estado: 'activo',
-  },
-  {
-    id: 4,
-    sku: 'CLZ-RIE-002',
-    nombre: 'Riel inferior guiado 3 m',
-    categoria: 'rieles',
-    proveedor: 'Alumarket',
-    costoCompra: 5100,
-    precioML: 12990,
-    precioSitioWeb: 11990,
-    precioEstado: 13990,
-    stockActual: 14,
-    stockMinimo: 10,
-    unidadMedida: 'unidad',
-    estado: 'activo',
-  },
-  {
-    id: 5,
-    sku: 'CLZ-SOP-001',
-    nombre: 'Soporte lateral reforzado',
-    categoria: 'soportes',
-    proveedor: 'Ferretería del Centro',
-    costoCompra: 950,
-    precioML: 2990,
-    precioSitioWeb: 2790,
-    precioEstado: 3190,
-    stockActual: 42,
-    stockMinimo: 20,
-    unidadMedida: 'par',
-    estado: 'activo',
-  },
-  {
-    id: 6,
-    sku: 'CLZ-SOP-002',
-    nombre: 'Soporte de repisa oculto',
-    categoria: 'soportes',
-    proveedor: 'Ferretería del Centro',
-    costoCompra: 1250,
-    precioML: 3490,
-    precioSitioWeb: 3290,
-    precioEstado: 3790,
-    stockActual: 9,
-    stockMinimo: 15,
-    unidadMedida: 'par',
-    estado: 'activo',
-  },
-  {
-    id: 7,
-    sku: 'CLZ-TOR-001',
-    nombre: 'Tornillo autorroscante 1"',
-    categoria: 'tornillería',
-    proveedor: 'Suministros del Norte',
-    costoCompra: 120,
-    precioML: 490,
-    precioSitioWeb: 450,
-    precioEstado: 520,
-    stockActual: 240,
-    stockMinimo: 100,
-    unidadMedida: 'unidad',
-    estado: 'activo',
-  },
-  {
-    id: 8,
-    sku: 'CLZ-OTR-001',
-    nombre: 'Kit organizador de closet',
-    categoria: 'otros',
-    proveedor: 'ClosetPro SpA',
-    costoCompra: 7800,
-    precioML: 18990,
-    precioSitioWeb: 17990,
-    precioEstado: 19990,
-    stockActual: 3,
-    stockMinimo: 6,
-    unidadMedida: 'kit',
-    estado: 'activo',
-  },
-];
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
@@ -191,6 +83,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [movements, setMovements] = useState<Movement[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMovements, setLoadingMovements] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Cargar datos desde Supabase al montar el componente
@@ -210,7 +103,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sku: row.sku,
         nombre: row.nombre,
         categoria: row.categoria as ProductCategory,
-        proveedor: row.proveedor,
+        proveedor: row.proveedores?.nombre ?? '',
         costoCompra: Number(row.costo_compra),
         precioML: Number(row.precio_ml),
         precioSitioWeb: Number(row.precio_sitio_web),
@@ -229,28 +122,53 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         nombre: row.nombre,
         rut: row.rut,
         contacto: row.correo,
+        telefono: row.telefono ?? '',
+        ciudad: row.ciudad ?? '',
         tiempoEntregaPromedio: '3-5 días',
         productos: mappedProducts.filter(p => p.proveedor === row.nombre).map(p => p.nombre),
       }));
       setSuppliers(mappedSuppliers);
 
-      // Cargar movimientos desde Supabase
+      // Cargar los 100 movimientos más recientes
       const movimientosData = await fetchMovimientos();
-      const mappedMovements: Movement[] = movimientosData.map((row: any) => ({
+      setMovements(movimientosData.map((row: any) => ({
         id: row.id,
         productId: row.producto_id,
         fecha: row.fecha,
         tipo: row.tipo as MovementType,
         cantidad: row.cantidad,
         canal: row.referencia,
-      }));
-      setMovements(mappedMovements);
+      })));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al cargar datos';
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof (err as any)?.message === 'string'
+          ? `${(err as any).message}${(err as any).code ? ` [${(err as any).code}]` : ''}`
+          : JSON.stringify(err);
       setError(message);
       console.error('Error loading inventory data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const reloadMovimientos = async (desde?: string, hasta?: string) => {
+    try {
+      setLoadingMovements(true);
+      const data = await fetchMovimientos(desde, hasta);
+      setMovements(data.map((row: any) => ({
+        id: row.id,
+        productId: row.producto_id,
+        fecha: row.fecha,
+        tipo: row.tipo as MovementType,
+        cantidad: row.cantidad,
+        canal: row.referencia,
+      })));
+    } catch (err) {
+      console.error('Error recargando movimientos:', err);
+    } finally {
+      setLoadingMovements(false);
     }
   };
 
@@ -264,7 +182,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addMovement = async (movement: Omit<Movement, 'id'>) => {
     try {
-      // Guardar en Supabase
+      // RPC atómica: actualiza stock_actual en productos e inserta el movimiento
+      // en la misma transacción. Si alguno falla, Postgres revierte ambos.
       const newMovement = await addMovimientoSupabase({
         producto_id: movement.productId,
         tipo: movement.tipo,
@@ -273,30 +192,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         fecha: movement.fecha,
       });
 
-      // Actualizar estado local
-      const mappedMovement: Movement = {
+      setMovements(current => [{
         id: newMovement.id,
         productId: newMovement.producto_id,
         fecha: newMovement.fecha,
         tipo: newMovement.tipo as MovementType,
         cantidad: newMovement.cantidad,
         canal: newMovement.referencia,
-      };
+      }, ...current]);
 
-      setMovements(current => [mappedMovement, ...current]);
-
-      // Actualizar stock del producto
+      // Leer el stock real desde BD (ya actualizado por la RPC)
+      const stockActual = await fetchProductoStockActual(movement.productId);
       setProducts(current =>
-        current.map(product => {
-          if (product.id !== movement.productId) return product;
-
-          const signedQuantity =
-            movement.tipo.startsWith('salida') || movement.tipo === 'merma'
-              ? -movement.cantidad
-              : movement.cantidad;
-          const adjustedStock = Math.max(0, product.stockActual + signedQuantity);
-          return { ...product, stockActual: adjustedStock };
-        })
+        current.map(p => p.id === movement.productId ? { ...p, stockActual } : p)
       );
     } catch (err) {
       console.error('Error adding movement:', err);
@@ -307,12 +215,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const addProducts = async (items: Product[]) => {
     try {
       for (const item of items) {
+        const matchedSupplier = suppliers.find(s => s.nombre === item.proveedor);
         const result = await addProductoSupabase({
           sku: item.sku,
           nombre: item.nombre,
-          codigo: item.sku,
+          proveedor_id: matchedSupplier?.id ?? null,
           categoria: item.categoria,
-          proveedor: item.proveedor,
           costo_compra: item.costoCompra,
           precio_ml: item.precioML,
           precio_sitio_web: item.precioSitioWeb,
@@ -327,7 +235,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           sku: result.sku,
           nombre: result.nombre,
           categoria: result.categoria as ProductCategory,
-          proveedor: result.proveedor,
+          proveedor: (result as any).proveedores?.nombre ?? item.proveedor,
           costoCompra: Number(result.costo_compra),
           precioML: Number(result.precio_ml),
           precioSitioWeb: Number(result.precio_sitio_web),
@@ -344,15 +252,74 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const updateProduct = (id: number, patch: Partial<Product>) => {
+  const updateProduct = async (id: number, patch: Partial<Product>) => {
+    const dbPatch: Database['public']['Tables']['productos']['Update'] = {};
+    if (patch.nombre !== undefined)         dbPatch.nombre = patch.nombre;
+    if (patch.sku !== undefined)            dbPatch.sku = patch.sku;
+    if (patch.categoria !== undefined)      dbPatch.categoria = patch.categoria;
+    if (patch.costoCompra !== undefined)    dbPatch.costo_compra = patch.costoCompra;
+    if (patch.precioML !== undefined)       dbPatch.precio_ml = patch.precioML;
+    if (patch.precioSitioWeb !== undefined) dbPatch.precio_sitio_web = patch.precioSitioWeb;
+    if (patch.precioEstado !== undefined)   dbPatch.precio_estado = patch.precioEstado;
+    if (patch.stockMinimo !== undefined)    dbPatch.stock_minimo = patch.stockMinimo;
+    if (patch.unidadMedida !== undefined)   dbPatch.unidad_medida = patch.unidadMedida;
+    if (patch.estado !== undefined)         dbPatch.estado = patch.estado;
+    if (patch.proveedor !== undefined) {
+      const supplier = suppliers.find(s => s.nombre === patch.proveedor);
+      dbPatch.proveedor_id = supplier?.id ?? null;
+    }
+
+    await updateProductoSupabase(id, dbPatch);
     setProducts(current =>
-      current.map(product => (product.id === id ? { ...product, ...patch } : product))
+      current.map(p => (p.id === id ? { ...p, ...patch } : p))
     );
   };
 
-  const deleteProduct = (id: number) => {
-    setProducts(current => current.filter(product => product.id !== id));
-    setMovements(current => current.filter(movement => movement.productId !== id));
+  const deleteProduct = async (id: number) => {
+    await deleteProductoSupabase(id);
+    setProducts(current => current.filter(p => p.id !== id));
+    setMovements(current => current.filter(m => m.productId !== id));
+  };
+
+  const addSupplier = async (supplier: Omit<Supplier, 'id' | 'productos'>) => {
+    const result = await addProveedorSupabase({
+      nombre: supplier.nombre,
+      rut: supplier.rut,
+      correo: supplier.contacto,
+      telefono: supplier.telefono,
+      ciudad: supplier.ciudad || null,
+    });
+    setSuppliers(current => [
+      ...current,
+      {
+        id: result.id,
+        nombre: result.nombre,
+        rut: result.rut,
+        contacto: result.correo,
+        telefono: result.telefono ?? '',
+        ciudad: result.ciudad ?? '',
+        tiempoEntregaPromedio: supplier.tiempoEntregaPromedio,
+        productos: [],
+      },
+    ]);
+  };
+
+  const updateSupplier = async (id: number, patch: Partial<Omit<Supplier, 'id' | 'productos'>>) => {
+    const updates: Record<string, unknown> = {};
+    if (patch.nombre !== undefined) updates.nombre = patch.nombre;
+    if (patch.rut !== undefined) updates.rut = patch.rut;
+    if (patch.contacto !== undefined) updates.correo = patch.contacto;
+    if (patch.telefono !== undefined) updates.telefono = patch.telefono;
+    if (patch.ciudad !== undefined) updates.ciudad = patch.ciudad;
+    await updateProveedorSupabase(id, updates);
+    setSuppliers(current =>
+      current.map(s => (s.id === id ? { ...s, ...patch } : s))
+    );
+  };
+
+  const deleteSupplier = async (id: number) => {
+    await deleteProveedorSupabase(id);
+    setSuppliers(current => current.filter(s => s.id !== id));
   };
 
   const findSupplierByProduct = (product: Product) =>
@@ -370,11 +337,16 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     lowStockProducts,
     lowStockCount,
     isLoading: loading,
+    isLoadingMovements: loadingMovements,
     error,
+    reloadMovimientos,
     addMovement,
     addProducts,
     updateProduct,
     deleteProduct,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
     findSupplierByProduct,
   };
 

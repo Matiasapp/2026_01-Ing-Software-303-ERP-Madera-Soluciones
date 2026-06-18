@@ -14,8 +14,8 @@ const ProtectedRoute: React.FC<Props> = ({ children, requiredRole }) => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eef6ff_100%)]">
-        <LoadingSpinner message="Iniciando Cercotec ERP..." />
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(194,125,58,0.08),_transparent_28%),linear-gradient(180deg,_#f9f7f4_0%,_#f5f0eb_100%)]">
+        <LoadingSpinner message="Iniciando Madera Soluciones ERP..." />
       </div>
     );
   }

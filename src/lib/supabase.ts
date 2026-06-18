@@ -9,7 +9,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Type helpers for database tables
 export type Database = {
   public: {
     Tables: {
@@ -20,38 +19,57 @@ export type Database = {
           organismo: string;
           rut: string;
           monto_neto: number;
-          iva: number;
-          monto_total: number;
+          iva: number;                   // GENERATED ALWAYS AS — solo lectura
+          monto_total: number;           // GENERATED ALWAYS AS — solo lectura
           estado: string;
+          fecha_emision: string;
           fecha_recepcion: string;
           fecha_recepcion_conforme: string;
           fecha_pago_esperado: string;
+          fecha_primera_alerta: string;
+          fecha_alerta_urgente: string;
+          descripcion: string;
+          orden_compra: string;
           notas: string;
           created_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['facturas']['Row'],
-          'id' | 'created_at'
-        >;
+        // iva y monto_total NO se incluyen en Insert: Postgres los calcula
+        Insert: {
+          folio: string;
+          organismo: string;
+          rut: string;
+          monto_neto: number;
+          estado?: string;
+          fecha_emision: string;
+          fecha_recepcion: string;
+          fecha_recepcion_conforme: string;
+          fecha_pago_esperado: string;
+          fecha_primera_alerta: string;
+          fecha_alerta_urgente: string;
+          descripcion?: string;
+          orden_compra?: string;
+          notas?: string;
+        };
         Update: Partial<Database['public']['Tables']['facturas']['Insert']>;
       };
       productos: {
         Row: {
           id: number;
+          sku: string;
           nombre: string;
-          codigo: string;
+          proveedor_id: number | null;   // FK a proveedores
           categoria: string;
-          stock_minimo: number;
+          costo_compra: number;
+          precio_ml: number;
+          precio_sitio_web: number;
+          precio_estado: number;
           stock_actual: number;
-          proveedor_id: number;
-          precio: number;
+          stock_minimo: number;
+          unidad_medida: string;
           estado: string;
           created_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['productos']['Row'],
-          'id' | 'created_at'
-        >;
+        Insert: Omit<Database['public']['Tables']['productos']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['productos']['Insert']>;
       };
       proveedores: {
@@ -61,30 +79,27 @@ export type Database = {
           correo: string;
           telefono: string;
           rut: string;
-          ciudad: string;
+          ciudad: string | null;
           created_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['proveedores']['Row'],
-          'id' | 'created_at'
-        >;
+        Insert: Omit<Database['public']['Tables']['proveedores']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['proveedores']['Insert']>;
       };
       clientes: {
         Row: {
           id: number;
           nombre: string;
-          correo: string;
-          telefono: string;
+          correo: string | null;
+          telefono: string | null;
           canal_compra: string;
-          historial_pedidos: number;
-          monto_total_historico: number;
           created_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['clientes']['Row'],
-          'id' | 'created_at'
-        >;
+        Insert: {
+          nombre: string;
+          correo?: string | null;
+          telefono?: string | null;
+          canal_compra: string;
+        };
         Update: Partial<Database['public']['Tables']['clientes']['Insert']>;
       };
       movimientos_stock: {
@@ -101,9 +116,7 @@ export type Database = {
           Database['public']['Tables']['movimientos_stock']['Row'],
           'id' | 'created_at'
         >;
-        Update: Partial<
-          Database['public']['Tables']['movimientos_stock']['Insert']
-        >;
+        Update: Partial<Database['public']['Tables']['movimientos_stock']['Insert']>;
       };
       ventas: {
         Row: {
@@ -111,17 +124,47 @@ export type Database = {
           fecha: string;
           canal: string;
           referencia: string;
-          cliente: string;
+          cliente_id: number | null;
           monto: number;
-          productos_json: string;
           origen: string;
+          estado: string;
+          ml_order_id: string | null;    // null para ventas manuales; UNIQUE
           created_at: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['ventas']['Row'],
-          'id' | 'created_at'
-        >;
+        Insert: Omit<Database['public']['Tables']['ventas']['Row'], 'id' | 'created_at' | 'ml_order_id'> & { ml_order_id?: string | null; estado?: string };
         Update: Partial<Database['public']['Tables']['ventas']['Insert']>;
+      };
+      ml_credentials: {
+        Row: {
+          id: number;
+          seller_id: string;
+          access_token: string;
+          refresh_token: string;
+          expires_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['ml_credentials']['Row'], 'id'>;
+        Update: Partial<Database['public']['Tables']['ml_credentials']['Insert']>;
+      };
+      ventas_items: {
+        Row: {
+          id: number;
+          venta_id: number;
+          producto_id: number | null;
+          nombre: string;
+          cantidad: number;
+          precio_unitario: number;
+          subtotal: number;              // GENERATED ALWAYS AS — solo lectura
+        };
+        // subtotal NO se incluye en Insert: Postgres lo calcula
+        Insert: {
+          venta_id: number;
+          producto_id?: number | null;
+          nombre: string;
+          cantidad: number;
+          precio_unitario: number;
+        };
+        Update: Partial<Database['public']['Tables']['ventas_items']['Insert']>;
       };
     };
   };

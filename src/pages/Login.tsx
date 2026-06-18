@@ -56,7 +56,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eff6ff_100%)] px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(194,125,58,0.10),_transparent_28%),linear-gradient(180deg,_#f9f7f4_0%,_#f5f0eb_100%)] px-4 py-10">
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -65,7 +65,7 @@ const Login: React.FC = () => {
       >
         <div className="mb-6">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Cercotec ERP
+            Madera Soluciones ERP
           </p>
           <h1 className="mt-2 text-2xl font-semibold text-slate-900">Iniciar sesión</h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -83,7 +83,7 @@ const Login: React.FC = () => {
               autoComplete="email"
               aria-invalid={Boolean(errors.email)}
               aria-describedby={errors.email ? 'login-email-error' : undefined}
-              className={`mt-1 block w-full rounded-xl border px-3 py-2 shadow-sm outline-none transition focus:ring-4 ${errors.email ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-blue-400 focus:ring-blue-100'}`}
+              className={`mt-1 block w-full rounded-xl border px-3 py-2 shadow-sm outline-none transition focus:ring-4 ${errors.email ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-amber-400 focus:ring-amber-100'}`}
             />
             {errors.email && (
               <p id="login-email-error" className="mt-1 text-sm text-rose-600">
@@ -100,7 +100,7 @@ const Login: React.FC = () => {
               autoComplete="current-password"
               aria-invalid={Boolean(errors.password)}
               aria-describedby={errors.password ? 'login-password-error' : undefined}
-              className={`mt-1 block w-full rounded-xl border px-3 py-2 shadow-sm outline-none transition focus:ring-4 ${errors.password ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-blue-400 focus:ring-blue-100'}`}
+              className={`mt-1 block w-full rounded-xl border px-3 py-2 shadow-sm outline-none transition focus:ring-4 ${errors.password ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-amber-400 focus:ring-amber-100'}`}
             />
             {errors.password && (
               <p id="login-password-error" className="mt-1 text-sm text-rose-600">
@@ -110,7 +110,7 @@ const Login: React.FC = () => {
           </div>
           <div className="flex items-center justify-between">
             <button
-              className="rounded-2xl bg-[linear-gradient(135deg,_#2563eb,_#0ea5e9)] px-4 py-2 text-white shadow-[0_12px_30px_rgba(37,99,235,0.25)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,99,235,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-[linear-gradient(135deg,_#6b3a1f,_#c27d3a)] px-4 py-2 text-white shadow-[0_12px_30px_rgba(120,53,15,0.25)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(120,53,15,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
               type="submit"
               disabled={!isValid}
             >
@@ -118,13 +118,6 @@ const Login: React.FC = () => {
             </button>
           </div>
         </form>
-        <div className="mt-4 text-sm text-slate-600">
-          <p>Usuarios de prueba:</p>
-          <ul className="list-disc ml-5">
-            <li>admin@cercotec.cl / admin123 (administrador)</li>
-            <li>operador@cercotec.cl / op123 (operador)</li>
-          </ul>
-        </div>
       </motion.div>
     </div>
   );

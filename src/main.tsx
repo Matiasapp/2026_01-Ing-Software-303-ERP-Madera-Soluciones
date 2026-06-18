@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { HashRouter } from 'react-router-dom';
 import App from './App';
 import { GlobalProvider } from './context/GlobalContext';
 import { AuthProvider } from './context/AuthContext';
@@ -9,7 +9,7 @@ import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <GlobalProvider>
         <AuthProvider>
           <NotificationProvider>
@@ -17,6 +17,6 @@ createRoot(document.getElementById('root')!).render(
           </NotificationProvider>
         </AuthProvider>
       </GlobalProvider>
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );

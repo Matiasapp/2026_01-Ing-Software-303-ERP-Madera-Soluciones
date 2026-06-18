@@ -38,7 +38,8 @@ type BillingContextType = {
   isLoading: boolean;
   error: string | null;
   updateInvoiceNotes: (id: number, notes: string) => void;
-  addInvoice: (invoice: Omit<Invoice, 'id'>) => void;
+  updateInvoiceStatus: (id: number, estado: InvoiceStatus) => Promise<void>;
+  addInvoice: (invoice: Omit<Invoice, 'id'>) => Promise<Invoice>;
 };
 
 const BillingContext = createContext<BillingContextType | undefined>(undefined);
@@ -91,7 +92,12 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }));
       setInvoices(mappedInvoices);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al cargar datos';
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof (err as any)?.message === 'string'
+          ? `${(err as any).message}${(err as any).code ? ` [${(err as any).code}]` : ''}`
+          : JSON.stringify(err);
       setError(message);
       console.error('Error loading billing data:', err);
     } finally {
@@ -118,6 +124,18 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [invoices]
   );
 
+  const updateInvoiceStatus = async (id: number, estado: InvoiceStatus) => {
+    try {
+      await updateFacturaSupabase(id, { estado });
+      setInvoices(current =>
+        current.map(invoice => (invoice.id === id ? { ...invoice, estado } : invoice))
+      );
+    } catch (err) {
+      console.error('Error updating invoice status:', err);
+      throw err;
+    }
+  };
+
   const updateInvoiceNotes = async (id: number, notes: string) => {
     try {
       await updateFacturaSupabase(id, { notas: notes });
@@ -137,8 +155,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         organismo: invoice.organismo,
         rut: invoice.rut,
         monto_neto: invoice.montoNeto,
-        iva: invoice.iva,
-        monto_total: invoice.total,
+        // iva y monto_total son columnas GENERATED en Postgres, no se insertan
         estado: invoice.estado,
         fecha_emision: invoice.fechaEmision,
         fecha_recepcion: invoice.fechaEmision,
@@ -151,7 +168,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         notas: invoice.notas,
       });
 
-      setInvoices(current => [{
+      const newInvoice: Invoice = {
         id: result.id,
         folio: result.folio,
         organismo: result.organismo,
@@ -168,7 +185,9 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ordenCompra: result.orden_compra || '',
         estado: result.estado as InvoiceStatus,
         notas: result.notas || '',
-      }, ...current]);
+      };
+      setInvoices(current => [newInvoice, ...current]);
+      return newInvoice;
     } catch (err) {
       console.error('Error adding invoice:', err);
       throw err;
@@ -184,6 +203,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     isLoading: loading,
     error,
     updateInvoiceNotes,
+    updateInvoiceStatus,
     addInvoice,
   };
 

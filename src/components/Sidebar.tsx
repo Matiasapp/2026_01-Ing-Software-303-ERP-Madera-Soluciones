@@ -3,17 +3,45 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useInventory } from '../context/InventoryContext';
 
+function StatsIcon({ active }: { active?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${active ? 'text-white' : ''}`}>
+      <path d="M18 20V10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 20V4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6 20v-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SettingsIcon({ active }: { active?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${active ? 'text-white' : ''}`}>
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 const allLinks = [
   { to: '/', label: 'Dashboard', icon: DashboardIcon },
   { to: '/cobranza', label: 'Cobranza', icon: WalletIcon },
   { to: '/inventario', label: 'Inventario', icon: InventoryIcon },
   { to: '/ventas', label: 'Ventas', icon: SalesIcon },
   { to: '/clientes', label: 'Clientes', icon: UsersIcon },
+  { to: '/estadisticas', label: 'Estadísticas', icon: StatsIcon },
+  { to: '/configuracion', label: 'Configuración', icon: SettingsIcon },
 ];
+
+const adminOnly = new Set(['/inventario', '/estadisticas', '/configuracion']);
 
 const permissions: Record<string, string[]> = {
   admin: allLinks.map(l => l.to),
-  operator: allLinks.filter(l => l.to !== '/inventario').map(l => l.to),
+  operator: allLinks.filter(l => !adminOnly.has(l.to)).map(l => l.to),
 };
 
 type SidebarProps = {
@@ -33,11 +61,11 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}
     >
-      <div className="mb-6 rounded-3xl border border-slate-200 bg-slate-950 px-4 py-4 text-white shadow-[0_20px_40px_rgba(15,23,42,0.22)]">
+      <div className="mb-6 rounded-3xl border border-amber-900/30 bg-[#1c1005] px-4 py-4 text-white shadow-[0_20px_40px_rgba(28,16,5,0.28)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-200">
-              Cercotec ERP
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-300">
+              Madera Soluciones ERP
             </p>
             <h1 className="mt-1 text-2xl font-semibold">Gestión premium</h1>
             <p className="mt-1 text-sm text-slate-300">Sistema para ferretería y ventas</p>
@@ -63,7 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
               className={({ isActive }) =>
                 `group flex items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-sm font-medium transition duration-200 ${
                   isActive
-                    ? 'border-blue-200 bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-[0_16px_30px_rgba(37,99,235,0.22)]'
+                    ? 'border-amber-800/30 bg-gradient-to-r from-[#6b3a1f] to-[#c27d3a] text-white shadow-[0_16px_30px_rgba(120,53,15,0.25)]'
                     : 'border-transparent text-slate-700 hover:border-slate-200 hover:bg-white hover:shadow-sm'
                 }`
               }

@@ -15,13 +15,7 @@ import AnimatedNumber from '../components/AnimatedNumber';
 import { useBilling } from '../context/BillingContext';
 import { useInventory } from '../context/InventoryContext';
 import { useSales } from '../context/SalesContext';
-
-const currency = (value: number) =>
-  new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
-    maximumFractionDigits: 0,
-  }).format(value);
+import { formatCurrency as currency } from '../lib/format';
 
 const cardContainer = {
   hidden: {},
@@ -45,7 +39,7 @@ const Dashboard: React.FC = () => {
 
   const todaySummary = useMemo(() => {
     const totalSales = todaysOrders.reduce((sum, order) => sum + order.monto, 0);
-    const byChannel = ['Mercado Libre', 'Apanio', 'WhatsApp', 'Estado', 'Sitio web'].map(
+    const byChannel = ['Mercado Libre', 'Apanio', 'Venta directa', 'Estado'].map(
       channel => {
         const channelOrders = todaysOrders.filter(order => order.canal === channel);
         return {
@@ -72,13 +66,13 @@ const Dashboard: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: 'easeOut' }}
-        className="overflow-hidden rounded-[2rem] border border-blue-100 bg-[linear-gradient(135deg,_#0f172a_0%,_#1d4ed8_52%,_#38bdf8_100%)] px-6 py-6 text-white shadow-[0_24px_60px_rgba(37,99,235,0.24)]"
+        className="overflow-hidden rounded-[2rem] border border-amber-900/20 bg-[linear-gradient(135deg,_#1c1005_0%,_#6b3a1f_52%,_#c27d3a_100%)] px-6 py-6 text-white shadow-[0_24px_60px_rgba(120,53,15,0.22)]"
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm/6 text-blue-100">Home · Cercotec ERP</p>
+            <p className="text-sm/6 text-amber-100">Home · Madera Soluciones ERP</p>
             <h2 className="text-3xl font-semibold tracking-tight">Resumen ejecutivo del día</h2>
-            <p className="mt-1 max-w-2xl text-sm text-blue-50/90">
+            <p className="mt-1 max-w-2xl text-sm text-amber-50/90">
               Indicadores comerciales y financieros con lectura rápida, estados críticos y ventas
               por canal.
             </p>
@@ -89,11 +83,11 @@ const Dashboard: React.FC = () => {
         </div>
       </motion.header>
 
-      <motion.div
+<motion.div
         variants={cardContainer}
         initial="hidden"
         animate="show"
-        className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-4 xl:grid-cols-4"
       >
         <StatCard
           title="Ventas totales del día"
@@ -129,7 +123,7 @@ const Dashboard: React.FC = () => {
             <div>
               <h3 className="text-xl font-semibold text-slate-900">Pedidos por canal</h3>
               <p className="text-sm text-slate-500">
-                Resumen del día por Mercado Libre, Apanio, WhatsApp, Estado y sitio web.
+                Resumen del día por Mercado Libre, Apanio, Venta directa y Estado.
               </p>
             </div>
             <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -141,7 +135,7 @@ const Dashboard: React.FC = () => {
             variants={cardContainer}
             initial="hidden"
             animate="show"
-            className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+            className="mt-5 grid gap-4 grid-cols-2 md:grid-cols-4"
           >
             {todaySummary.byChannel.map(item => (
               <motion.div
@@ -210,7 +204,7 @@ const Dashboard: React.FC = () => {
               title="Facturas vencidas"
               value={`${overdueCount}`}
               description="Requieren seguimiento comercial urgente."
-              tone="sky"
+              tone="amber"
             />
           </div>
         </motion.aside>
@@ -254,7 +248,7 @@ const Dashboard: React.FC = () => {
                   {monthlySalesByChannel.map((entry, index) => (
                     <Cell
                       key={`cell-${entry.canal}`}
-                      fill={['#2563eb', '#0ea5e9', '#14b8a6', '#f59e0b', '#6366f1'][index % 5]}
+                      fill={['#c27d3a', '#8b5e2f', '#e8963d', '#6b3a1f', '#d4935a'][index % 5]}
                     />
                   ))}
                 </Bar>
@@ -277,7 +271,7 @@ const Dashboard: React.FC = () => {
             <ProgressMetric
               label="Crecimiento mensual"
               value={Math.max(0, comparison.growth)}
-              tone="bg-blue-600"
+              tone="bg-amber-700"
             />
             <ProgressMetric
               label="Cobranza en semana"
@@ -329,12 +323,11 @@ const AlertCard: React.FC<{
   title: string;
   value: string;
   description: string;
-  tone: 'amber' | 'rose' | 'sky';
+  tone: 'amber' | 'rose';
 }> = ({ title, value, description, tone }) => {
   const toneClasses = {
     amber: 'border-amber-200 bg-amber-50 text-amber-700',
     rose: 'border-rose-200 bg-rose-50 text-rose-700',
-    sky: 'border-sky-200 bg-sky-50 text-sky-700',
   } as const;
 
   return (

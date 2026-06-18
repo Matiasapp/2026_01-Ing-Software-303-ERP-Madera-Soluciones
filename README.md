@@ -1,4 +1,3 @@
-
 ## Enlace Sitio Web: https://erpv-1-0.vercel.app/
 
 ## ERP PRUEBA V_1
@@ -25,7 +24,6 @@ npm run build
 npm run dev
 ```
 
-
 Estructura principal:
 
 - src/: código fuente
@@ -35,9 +33,9 @@ Estructura principal:
 
 Credenciales de prueba:
 
-- admin@cercotec.cl / admin123 (administrador)
-- operador@cercotec.cl / op123 (operador)
-=======
-# ERPV1_0
-Un erp de prueba.
+- admin@maderasoluciones.cl / admin123 (administrador)
+- operador@maderasoluciones.cl / op123 (operador)
 
+# ERPV1_0
+
+Un erp de prueba.

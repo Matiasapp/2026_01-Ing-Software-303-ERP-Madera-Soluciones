@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext';
 import PageTransition from './PageTransition';
 import { useBilling } from '../context/BillingContext';
 import { useInventory } from '../context/InventoryContext';
@@ -17,7 +16,6 @@ const Layout: React.FC = () => {
   const { isLoading: billingLoading } = useBilling();
   const { isLoading: inventoryLoading } = useInventory();
   const { isLoading: salesLoading } = useSales();
-  const { notifications, dismiss } = useNotification();
   const location = useLocation();
   const isPageLoading = billingLoading || inventoryLoading || salesLoading;
 
@@ -31,7 +29,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eef6ff_100%)] text-slate-900 lg:flex">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(194,125,58,0.08),_transparent_28%),linear-gradient(180deg,_#f9f7f4_0%,_#f5f0eb_100%)] text-slate-900 lg:flex">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {sidebarOpen && (
@@ -49,7 +47,7 @@ const Layout: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/90 text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 lg:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/90 text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700 lg:hidden"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menú"
               >
@@ -57,7 +55,7 @@ const Layout: React.FC = () => {
               </button>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Cercotec ERP
+                  Madera Soluciones ERP
                 </p>
                 <h1 className="text-base font-semibold text-slate-900">
                   {user?.role === 'admin' ? 'Panel administrador' : 'Panel operador'}
@@ -71,7 +69,7 @@ const Layout: React.FC = () => {
                 <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
               </div>
               <details className="relative">
-                <summary className="list-none cursor-pointer rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+                <summary className="list-none cursor-pointer rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700">
                   Perfil
                 </summary>
                 <div className="absolute right-0 mt-2 w-56 rounded-3xl border border-slate-200 bg-white p-2 shadow-[0_20px_45px_rgba(15,23,42,0.14)]">
@@ -89,7 +87,7 @@ const Layout: React.FC = () => {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-7xl min-w-0">
+          <div className="mx-auto w-full max-w-[1600px] min-w-0">
             <AnimatePresence mode="wait" initial={false}>
               <PageTransition key={location.pathname} className="min-w-0">
                 <Outlet />
@@ -105,30 +103,6 @@ const Layout: React.FC = () => {
         </div>
       )}
 
-      <div className="pointer-events-none fixed right-4 top-4 z-50 space-y-2">
-        {notifications.map(notification => (
-          <motion.button
-            key={notification.id}
-            type="button"
-            onClick={() => dismiss(notification.id)}
-            initial={{ opacity: 0, x: 24, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.96 }}
-            transition={{ duration: 0.24 }}
-            whileHover={{ scale: 1.02 }}
-            className={`pointer-events-auto w-full max-w-sm rounded-3xl border px-4 py-3 text-left shadow-[0_16px_36px_rgba(15,23,42,0.12)] backdrop-blur ${
-              notification.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50/95 text-emerald-800'
-                : notification.type === 'error'
-                  ? 'border-rose-200 bg-rose-50/95 text-rose-800'
-                  : 'border-sky-200 bg-sky-50/95 text-sky-800'
-            }`}
-          >
-            <div className="text-sm font-semibold capitalize">{notification.type}</div>
-            <div className="text-sm">{notification.message}</div>
-          </motion.button>
-        ))}
-      </div>
     </div>
   );
 };

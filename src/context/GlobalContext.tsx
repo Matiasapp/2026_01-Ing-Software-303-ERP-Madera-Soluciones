@@ -6,14 +6,14 @@ type GlobalState = {
 };
 
 const defaultState: GlobalState = {
-  company: 'Cercotec',
+  company: 'Madera Soluciones',
   setCompany: () => {},
 };
 
 const GlobalContext = createContext<GlobalState>(defaultState);
 
 export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [company, setCompany] = useState<string>('Cercotec');
+  const [company, setCompany] = useState<string>('Madera Soluciones');
 
   return (
     <GlobalContext.Provider value={{ company, setCompany }}>{children}</GlobalContext.Provider>

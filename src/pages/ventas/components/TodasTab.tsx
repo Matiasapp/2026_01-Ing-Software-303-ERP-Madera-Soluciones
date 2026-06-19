@@ -1,6 +1,6 @@
 import React from 'react';
 import type { SalesChannel } from '../../../context/SalesContext';
-import { formatCurrency as currency } from '../../../lib/format';
+import { formatCurrency as currency, formatTime } from '../../../lib/format';
 import type { VentasVM } from '../useVentasPage';
 import { OrderStatusBadge, OrderStatusSelect } from './status';
 import TopProducts from './TopProducts';
@@ -73,7 +73,7 @@ const TodasTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="w-6 px-2 py-2" />
-              <th className="px-3 py-2">Fecha</th>
+              <th className="px-3 py-2">Fecha y hora</th>
               <th className="px-3 py-2">Referencia</th>
               <th className="px-3 py-2">Cliente</th>
               <th className="px-3 py-2">Canal</th>
@@ -98,7 +98,14 @@ const TodasTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     </td>
-                    <td className="px-3 py-2 text-slate-500">{order.fecha}</td>
+                    <td className="px-3 py-2 text-slate-500">
+                      {order.fecha}
+                      {order.createdAt && (
+                        <span className="ml-2 text-xs text-slate-400">
+                          {formatTime(order.createdAt)}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 font-medium text-slate-900">{order.referencia}</td>
                     <td className="px-3 py-2 text-slate-600">{order.cliente}</td>
                     <td className="px-3 py-2">

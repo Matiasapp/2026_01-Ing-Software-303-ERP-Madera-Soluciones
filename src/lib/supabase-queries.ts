@@ -210,7 +210,10 @@ export async function fetchVentas() {
   const { data, error } = await supabase
     .from('ventas')
     .select('*, ventas_items(*), clientes(nombre)')
-    .order('fecha', { ascending: false });
+    // Orden por día y, dentro del mismo día, por hora (created_at) descendente,
+    // para que el orden coincida con la hora que se muestra en la tabla.
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data || [];
 }
@@ -241,7 +244,9 @@ export async function addVenta(
     p_origen:      ventaData.origen,
     p_ml_order_id: ventaData.ml_order_id ?? null,
     p_estado:      (ventaData as any).estado ?? 'Pendiente',
-    p_items:       JSON.stringify(items),
+    // p_items es jsonb: se pasa el array directo. Con JSON.stringify llegaría
+    // como string escalar y jsonb_array_elements falla (22023).
+    p_items:       items,
   });
 
   if (error) throw error;

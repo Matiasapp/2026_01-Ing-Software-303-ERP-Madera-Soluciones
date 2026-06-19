@@ -22,6 +22,10 @@ export type SalesItem = {
 export type SalesOrder = {
   id: number;
   fecha: string;
+  // Timestamp ISO de creación del registro (created_at). Aporta la hora, que
+  // `fecha` (solo día) no tiene. Opcional: en altas optimistas puede no estar
+  // hasta recargar.
+  createdAt?: string;
   canal: SalesChannel;
   referencia: string;
   cliente: string;
@@ -126,6 +130,7 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const mapped: SalesOrder = {
               id: fullOrder.id,
               fecha: fullOrder.fecha,
+              createdAt: (fullOrder as any).created_at,
               canal: fullOrder.canal as SalesChannel,
               referencia: fullOrder.referencia,
               cliente: (fullOrder as any).clientes?.nombre ?? fullOrder.referencia,
@@ -154,6 +159,7 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const mappedOrders: SalesOrder[] = ventasData.map((row: any) => ({
         id: row.id,
         fecha: row.fecha,
+        createdAt: row.created_at,
         canal: row.canal as SalesChannel,
         referencia: row.referencia,
         cliente: row.clientes?.nombre ?? row.referencia,

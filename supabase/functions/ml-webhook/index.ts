@@ -63,7 +63,9 @@ Deno.serve(async (req: Request) => {
       p_origen:      venta.origen,
       p_ml_order_id: venta.ml_order_id,
       p_estado:      'Pendiente',
-      p_items:       JSON.stringify(items),
+      // p_items es jsonb: hay que pasar el array directo. Con JSON.stringify
+      // llegaría como string escalar y jsonb_array_elements falla (22023).
+      p_items:       items,
     })
 
     if (rpcError) {

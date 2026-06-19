@@ -126,10 +126,19 @@ const TodasTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
                       <td colSpan={6} className="px-4 py-3 space-y-3">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-slate-500">Estado:</span>
-                          <OrderStatusSelect
-                            value={order.estado}
-                            onChange={estado => vm.handleStatusChange(order.id, estado)}
-                          />
+                          {order.canal === 'Mercado Libre' ? (
+                            <>
+                              <OrderStatusBadge estado={order.estado} />
+                              <span className="text-xs text-slate-400">
+                                Gestionado por Mercado Libre
+                              </span>
+                            </>
+                          ) : (
+                            <OrderStatusSelect
+                              value={order.estado}
+                              onChange={estado => vm.handleStatusChange(order.id, estado)}
+                            />
+                          )}
                         </div>
                         {order.productos.length === 0 ? (
                           <span className="text-xs text-slate-400">Sin detalle de productos.</span>

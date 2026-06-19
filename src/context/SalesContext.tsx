@@ -139,10 +139,28 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               origen: fullOrder.origen,
               estado: (fullOrder.estado ?? 'Pendiente') as OrderStatus,
             };
-            setOrders(current => [mapped, ...current]);
+            setOrders(current =>
+              current.some(o => o.id === mapped.id) ? current : [mapped, ...current],
+            );
           } catch (err) {
             console.error('Error al recibir orden ML en tiempo real:', err);
           }
+        },
+      )
+      // El webhook actualiza el estado de la orden (envío/cancelación). Reflejamos
+      // ese cambio en vivo sin recargar.
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ventas', filter: 'canal=eq.Mercado Libre' },
+        (payload) => {
+          const updated = payload.new as { id: number; estado?: string };
+          setOrders(current =>
+            current.map(o =>
+              o.id === updated.id
+                ? { ...o, estado: (updated.estado ?? o.estado) as OrderStatus }
+                : o,
+            ),
+          );
         },
       )
       .subscribe();

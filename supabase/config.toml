@@ -1,0 +1,9 @@
+project_id = "qpekvqzgfdvzhhiakpcn"
+
+# Funciones llamadas por Mercado Libre (OAuth redirect y webhook de notificaciones).
+# ML no envía header de Authorization, por eso se desactiva la verificación de JWT.
+[functions.ml-oauth-callback]
+verify_jwt = false
+
+[functions.ml-webhook]
+verify_jwt = false

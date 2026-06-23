@@ -73,3 +73,13 @@ export const formatDate = (value: string) =>
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(`${value}T00:00:00`));
+
+// Devuelve la hora local (HH:mm) de un timestamp ISO. Vacío si no hay valor.
+export const formatTime = (value?: string | null) =>
+  value
+    ? new Intl.DateTimeFormat('es-CL', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(new Date(value))
+    : '';

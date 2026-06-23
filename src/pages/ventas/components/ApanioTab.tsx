@@ -1,6 +1,7 @@
 import React from 'react';
 import type { VentasVM } from '../useVentasPage';
 import ChannelSummary from './ChannelSummary';
+import DateRangeFilter from './DateRangeFilter';
 import ImportPreviewTable from './ImportPreviewTable';
 import TopProducts from './TopProducts';
 
@@ -27,9 +28,16 @@ const ApanioTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
       onCancel={() => vm.setApanioPreview(null)}
       channelLabel="Apanio"
     />
+    <DateRangeFilter
+      desde={vm.apanioDesde}
+      hasta={vm.apanioHasta}
+      onDesde={vm.setApanioDesde}
+      onHasta={vm.setApanioHasta}
+      onClear={vm.clearApanioFilters}
+    />
     <ChannelSummary
       orders={vm.apanioOrders}
-      title="Órdenes del mes"
+      title="Ventas de Apanio"
       onStatusChange={vm.handleStatusChange}
     />
     <TopProducts title="Top 5 productos" items={vm.topProductsByChannel('Apanio')} />

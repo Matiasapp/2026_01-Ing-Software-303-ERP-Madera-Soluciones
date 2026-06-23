@@ -215,6 +215,61 @@ export async function updateVentaEstado(
   return (data?.length ?? 0) > 0
 }
 
+// Cancela una venta ML ya importada y repone el stock que se le había descontado.
+// El estado se marca 'Cancelado' con un UPDATE condicional atómico (neq Cancelado):
+// solo el proceso que "gana" la transición repone, evitando reposiciones dobles
+// ante webhooks repetidos o la cancelación llegando por orden Y por envío.
+// La reposición usa 'ajuste de inventario' (suma stock) con referencia que la
+// identifica. Devuelve true si efectuó la cancelación+reposición, false si la
+// venta no existe o ya estaba cancelada.
+export async function cancelVentaAndRestock(
+  supabase: ReturnType<typeof createClient>,
+  mlOrderId: string,
+): Promise<boolean> {
+  const { data: claimed, error: claimErr } = await supabase
+    .from('ventas')
+    .update({ estado: 'Cancelado' })
+    .eq('ml_order_id', mlOrderId)
+    .neq('estado', 'Cancelado')
+    .select('id')
+
+  if (claimErr) {
+    throw new Error(`Error al cancelar venta ML #${mlOrderId}: ${claimErr.message}`)
+  }
+  if (!claimed || claimed.length === 0) return false // no existe o ya cancelada
+
+  const ventaId = (claimed[0] as { id: number }).id
+
+  const { data: items, error: itemsErr } = await supabase
+    .from('ventas_items')
+    .select('producto_id, cantidad')
+    .eq('venta_id', ventaId)
+
+  if (itemsErr) {
+    throw new Error(`Error al leer items de venta ML #${mlOrderId}: ${itemsErr.message}`)
+  }
+
+  const referencia = `ML-${mlOrderId} (cancelada)`
+  const fecha = new Date().toISOString().slice(0, 10)
+  for (const item of (items ?? []) as { producto_id: number | null; cantidad: number }[]) {
+    if (item.producto_id == null) continue
+    const { error } = await supabase.rpc('apply_stock_movement', {
+      p_producto_id: item.producto_id,
+      p_tipo:        'ajuste de inventario',
+      p_cantidad:    item.cantidad,
+      p_referencia:  referencia,
+      p_fecha:       fecha,
+    })
+    if (error) {
+      console.error(
+        `No se pudo reponer stock del producto ${item.producto_id} ` +
+        `(orden ${referencia}, x${item.cantidad}): ${error.message}`,
+      )
+    }
+  }
+  return true
+}
+
 type PublicacionInfo = { producto_id: number; costo_compra: number | null }
 
 // Carga el mapeo meli_item_id → { producto_id, costo_compra } para los items de
@@ -245,6 +300,47 @@ export async function fetchPublicacionesLookup(
     })
   }
   return map
+}
+
+// Items de una venta tal como los devuelve mapMLOrderToVenta.
+type VentaItem = {
+  nombre: string
+  cantidad: number
+  precio_unitario: number
+  producto_id: number | null
+  meli_item_id: string
+  costo_compra_historico: number | null
+}
+
+// Descuenta del inventario los items de una orden ML que estén vinculados a un
+// producto interno. Reutiliza apply_stock_movement (atómica: inserta el
+// movimiento "salida ML..." y actualiza stock_actual en la misma transacción).
+// Solo debe invocarse en la PRIMERA importación de la orden para no descontar
+// dos veces (los reintentos de ML caen antes en 'already_imported'/'duplicate').
+// Un fallo por item (p.ej. stock insuficiente) se registra pero NO aborta: la
+// venta ya es válida aunque el inventario interno no esté sincronizado.
+export async function applyMLSaleStockOut(
+  supabase: ReturnType<typeof createClient>,
+  items: VentaItem[],
+  referencia: string,
+  fecha: string,
+): Promise<void> {
+  for (const item of items) {
+    if (item.producto_id == null) continue
+    const { error } = await supabase.rpc('apply_stock_movement', {
+      p_producto_id: item.producto_id,
+      p_tipo:        'salida ML Full/Flex/Envíos',
+      p_cantidad:    item.cantidad,
+      p_referencia:  referencia,
+      p_fecha:       fecha,
+    })
+    if (error) {
+      console.error(
+        `No se pudo descontar stock del producto ${item.producto_id} ` +
+        `(orden ${referencia}, x${item.cantidad}): ${error.message}`,
+      )
+    }
+  }
 }
 
 export function mapMLOrderToVenta(

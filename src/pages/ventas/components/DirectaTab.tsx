@@ -1,6 +1,7 @@
 import React from 'react';
 import type { VentasVM } from '../useVentasPage';
 import ChannelSummary from './ChannelSummary';
+import DateRangeFilter from './DateRangeFilter';
 import TopProducts from './TopProducts';
 
 const DirectaTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
@@ -21,9 +22,16 @@ const DirectaTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
       </button>
     </div>
 
+    <DateRangeFilter
+      desde={vm.directaDesde}
+      hasta={vm.directaHasta}
+      onDesde={vm.setDirectaDesde}
+      onHasta={vm.setDirectaHasta}
+      onClear={vm.clearDirectaFilters}
+    />
     <ChannelSummary
       orders={vm.directOrders}
-      title="Órdenes del mes"
+      title="Ventas directas"
       onStatusChange={vm.handleStatusChange}
     />
     <TopProducts title="Top 5 productos" items={vm.topProductsByChannel('Venta directa')} />

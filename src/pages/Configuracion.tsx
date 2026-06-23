@@ -57,9 +57,11 @@ const Configuracion: React.FC = () => {
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
-      await supabase.rpc('disconnect_ml');
-      setStatus('disconnected');
-      setMlInfo(null);
+      // Edge Function: borra credenciales con service_role y revoca en ML.
+      const { error } = await supabase.functions.invoke('ml-disconnect', { method: 'POST' });
+      if (error) throw error;
+      // Re-verificamos el estado real en vez de asumir que se desconectó.
+      await checkConnection();
       setAlert({ type: 'success', text: 'Cuenta de Mercado Libre desconectada.' });
     } catch {
       setAlert({ type: 'error', text: 'Error al desconectar la cuenta.' });

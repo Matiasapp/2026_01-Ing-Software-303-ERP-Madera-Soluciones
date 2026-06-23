@@ -35,7 +35,8 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: userErr } = await userClient.auth.getUser()
   if (userErr || !user) return json({ ok: false, error: 'unauthenticated' }, 401)
 
-  if ((user.app_metadata as any)?.role !== 'admin') {
+  const role = (user.app_metadata as any)?.role
+  if (role !== 'admin' && role !== 'superadmin') {
     return json({ ok: false, error: 'forbidden' }, 403)
   }
 

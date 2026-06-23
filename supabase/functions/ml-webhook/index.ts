@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
+  applyMLSaleStockOut,
+  cancelVentaAndRestock,
   estadoFromOrderStatus,
   estadoFromShipmentStatus,
   fetchMLOrder,
@@ -74,8 +76,8 @@ async function handleOrder(supabase: Supabase, accessToken: string, orderId: str
     // Ya importada: solo propagamos la cancelación. No pisamos el progreso de
     // envío (En preparación/Despachado/Entregado) con "Pendiente".
     if (estado === 'Cancelado') {
-      await updateVentaEstado(supabase, orderId, 'Cancelado')
-      return json({ ok: true, venta: (existing as { id: number }).id, estado })
+      const restocked = await cancelVentaAndRestock(supabase, orderId)
+      return json({ ok: true, venta: (existing as { id: number }).id, estado, restocked })
     }
     return json({ ok: true, skipped: 'already_imported' })
   }
@@ -112,6 +114,11 @@ async function handleOrder(supabase: Supabase, accessToken: string, orderId: str
   }
 
   const ventaId = (ventaRow as { id: number }).id
+
+  // Descontar del inventario los productos vendidos. Primera importación únicamente:
+  // los reintentos de ML ya retornaron arriba ('already_imported'/'duplicate').
+  await applyMLSaleStockOut(supabase, items, venta.referencia, venta.fecha)
+
   console.log(`Orden ML #${orderId} → venta ID ${ventaId}`)
   return json({ ok: true, venta_id: ventaId })
 }
@@ -125,6 +132,14 @@ async function handleShipment(supabase: Supabase, accessToken: string, shipmentI
   const estado = estadoFromShipmentStatus(shipment.status)
   // Estado de envío sin mapeo (pending, handling, etc.): no tocamos la venta.
   if (!estado) return json({ ok: true, skipped: `shipment_status=${shipment.status}` })
+
+  // Cancelación vía envío: repone el stock igual que la cancelación vía orden.
+  if (estado === 'Cancelado') {
+    const restocked = await cancelVentaAndRestock(supabase, orderId)
+    if (!restocked) return json({ ok: true, skipped: 'venta_not_found_or_already_cancelled' })
+    console.log(`Envío ML #${shipmentId} (orden ${orderId}) → Cancelado + stock repuesto`)
+    return json({ ok: true, order: orderId, estado, restocked })
+  }
 
   const updated = await updateVentaEstado(supabase, orderId, estado)
   if (!updated) {

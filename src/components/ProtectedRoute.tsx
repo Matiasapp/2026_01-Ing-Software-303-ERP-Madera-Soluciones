@@ -8,6 +8,9 @@ type Props = {
   requiredRole?: 'admin' | 'operator';
 };
 
+// Jerarquía de privilegios: un rol superior cumple los requisitos de uno inferior.
+const ROLE_RANK: Record<string, number> = { operator: 1, admin: 2, superadmin: 3 };
+
 const ProtectedRoute: React.FC<Props> = ({ children, requiredRole }) => {
   const { token, user, isLoading } = useAuth();
   const location = useLocation();
@@ -24,7 +27,7 @@ const ProtectedRoute: React.FC<Props> = ({ children, requiredRole }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user.role !== requiredRole) {
+  if (requiredRole && (ROLE_RANK[user.role] ?? 0) < (ROLE_RANK[requiredRole] ?? 0)) {
     return <Navigate to="/" replace />;
   }
 

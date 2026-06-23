@@ -53,7 +53,7 @@ export function useVentasPage() {
     updateOrderStatus,
   } = useSales();
   const { invoices, dueThisWeekCount, overdueCount } = useBilling();
-  const { products, movements } = useInventory();
+  const { products, movements, addMovement } = useInventory();
   const { success, error: notifyError, info } = useNotification();
 
   const [activeTab, setActiveTab] = useState<Tab>('todas');
@@ -323,8 +323,15 @@ export function useVentasPage() {
 
     const productosItems: SalesItem[] = manualSale.lineas.map(l => {
       const prod = products.find(p => p.id === Number(l.productoId));
-      return { nombre: prod?.nombre ?? '', cantidad: Number(l.cantidad), monto: Number(l.monto) };
+      return {
+        nombre: prod?.nombre ?? '',
+        cantidad: Number(l.cantidad),
+        monto: Number(l.monto),
+        producto_id: prod?.id ?? null,
+      };
     });
+
+    const fecha = new Date().toISOString().slice(0, 10);
 
     try {
       await addDirectSale({
@@ -336,12 +343,41 @@ export function useVentasPage() {
         referencia: manualSale.referencia,
         monto: saleTotal,
         productos: productosItems,
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha,
       });
+
+      // Registrar la salida de inventario por cada línea (descuenta stock e inserta
+      // el movimiento 'salida directa'). Un fallo por línea (p.ej. stock insuficiente)
+      // no revierte la venta: se avisa cuáles no pudieron descontarse.
+      const fallosStock: string[] = [];
+      for (const l of manualSale.lineas) {
+        const pid = Number(l.productoId);
+        if (!pid) continue;
+        try {
+          await addMovement({
+            productId: pid,
+            tipo: 'salida directa',
+            cantidad: Number(l.cantidad),
+            canal: manualSale.referencia,
+            fecha,
+          });
+        } catch {
+          const prod = products.find(p => p.id === pid);
+          fallosStock.push(prod?.nombre ?? `producto ${pid}`);
+        }
+      }
+
       setManualSale({ nombre: '', correo: '', telefono: PHONE_PREFIX, referencia: '', lineas: [emptyLine()] });
       setSelectedCustomerId('');
       setShowSaleModal(false);
-      success('Venta directa registrada.');
+      if (fallosStock.length > 0) {
+        notifyError(
+          `Venta registrada, pero no se pudo descontar stock de: ${fallosStock.join(', ')} ` +
+            '(¿stock insuficiente?). Ajusta el inventario manualmente.',
+        );
+      } else {
+        success('Venta directa registrada y stock actualizado.');
+      }
     } catch {
       notifyError('Error al registrar la venta. Intenta nuevamente.');
     }

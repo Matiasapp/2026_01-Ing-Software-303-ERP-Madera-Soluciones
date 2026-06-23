@@ -45,7 +45,6 @@ export function useVentasPage() {
   const {
     orders,
     directCustomers,
-    currentMonthOrders,
     monthlySalesByChannel,
     currentMonthTotal,
     previousMonthTotal,
@@ -64,6 +63,12 @@ export function useVentasPage() {
   const [allCanal, setAllCanal] = useState<SalesChannel | 'Todos'>('Todos');
   const [allDesde, setAllDesde] = useState('');
   const [allHasta, setAllHasta] = useState('');
+  const [mlDesde, setMlDesde] = useState('');
+  const [mlHasta, setMlHasta] = useState('');
+  const [apanioDesde, setApanioDesde] = useState('');
+  const [apanioHasta, setApanioHasta] = useState('');
+  const [directaDesde, setDirectaDesde] = useState('');
+  const [directaHasta, setDirectaHasta] = useState('');
   const [mlPreview, setMlPreview] = useState<CsvImportPreview | null>(null);
   const [apanioPreview, setApanioPreview] = useState<CsvImportPreview | null>(null);
   const [mlOrigin, setMlOrigin] = useState<MlOrigin>('ML Full');
@@ -159,17 +164,37 @@ export function useVentasPage() {
   const removeLine = (index: number) =>
     setManualSale(c => ({ ...c, lineas: c.lineas.filter((_, i) => i !== index) }));
 
+  // Todas las ventas de Mercado Libre (no solo el mes), con filtro opcional de
+  // fecha (desde/hasta) para acotar cuando se quiera.
   const marketLibreOrders = useMemo(
-    () => currentMonthOrders.filter(order => order.canal === 'Mercado Libre'),
-    [currentMonthOrders]
+    () =>
+      orders.filter(order => {
+        if (order.canal !== 'Mercado Libre') return false;
+        if (mlDesde && order.fecha < mlDesde) return false;
+        if (mlHasta && order.fecha > mlHasta) return false;
+        return true;
+      }),
+    [orders, mlDesde, mlHasta]
   );
   const apanioOrders = useMemo(
-    () => currentMonthOrders.filter(order => order.canal === 'Apanio'),
-    [currentMonthOrders]
+    () =>
+      orders.filter(order => {
+        if (order.canal !== 'Apanio') return false;
+        if (apanioDesde && order.fecha < apanioDesde) return false;
+        if (apanioHasta && order.fecha > apanioHasta) return false;
+        return true;
+      }),
+    [orders, apanioDesde, apanioHasta]
   );
   const directOrders = useMemo(
-    () => orders.filter(order => order.canal === 'Venta directa'),
-    [orders]
+    () =>
+      orders.filter(order => {
+        if (order.canal !== 'Venta directa') return false;
+        if (directaDesde && order.fecha < directaDesde) return false;
+        if (directaHasta && order.fecha > directaHasta) return false;
+        return true;
+      }),
+    [orders, directaDesde, directaHasta]
   );
   const estadoOrders = useMemo(() => orders.filter(order => order.canal === 'Estado'), [orders]);
 
@@ -198,6 +223,21 @@ export function useVentasPage() {
     setAllCanal('Todos');
     setAllDesde('');
     setAllHasta('');
+  };
+
+  const clearMlFilters = () => {
+    setMlDesde('');
+    setMlHasta('');
+  };
+
+  const clearApanioFilters = () => {
+    setApanioDesde('');
+    setApanioHasta('');
+  };
+
+  const clearDirectaFilters = () => {
+    setDirectaDesde('');
+    setDirectaHasta('');
   };
 
   const handleImportCsv = (
@@ -438,8 +478,23 @@ export function useVentasPage() {
     topProductsByChannel,
     // canales
     marketLibreOrders,
+    mlDesde,
+    setMlDesde,
+    mlHasta,
+    setMlHasta,
+    clearMlFilters,
     apanioOrders,
+    apanioDesde,
+    setApanioDesde,
+    apanioHasta,
+    setApanioHasta,
+    clearApanioFilters,
     directOrders,
+    directaDesde,
+    setDirectaDesde,
+    directaHasta,
+    setDirectaHasta,
+    clearDirectaFilters,
     estadoOrders,
     handleStatusChange,
     // importación CSV

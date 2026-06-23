@@ -2,6 +2,7 @@ import React from 'react';
 import type { MlOrigin } from '../types';
 import type { VentasVM } from '../useVentasPage';
 import ChannelSummary from './ChannelSummary';
+import DateRangeFilter from './DateRangeFilter';
 import ImportPreviewTable from './ImportPreviewTable';
 import TopProducts from './TopProducts';
 
@@ -10,7 +11,7 @@ const MercadoLibreTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
         <h3 className="text-xl font-semibold text-slate-900">Mercado Libre</h3>
-        <p className="text-sm text-slate-500">Importación CSV, órdenes del mes y top productos.</p>
+        <p className="text-sm text-slate-500">Todas las ventas de Mercado Libre y top productos.</p>
       </div>
       <div className="flex items-center gap-2">
         <select
@@ -39,9 +40,16 @@ const MercadoLibreTab: React.FC<{ vm: VentasVM }> = ({ vm }) => (
       onCancel={() => vm.setMlPreview(null)}
       channelLabel="Mercado Libre"
     />
+    <DateRangeFilter
+      desde={vm.mlDesde}
+      hasta={vm.mlHasta}
+      onDesde={vm.setMlDesde}
+      onHasta={vm.setMlHasta}
+      onClear={vm.clearMlFilters}
+    />
     <ChannelSummary
       orders={vm.marketLibreOrders}
-      title="Órdenes del mes"
+      title="Ventas de Mercado Libre"
       onStatusChange={vm.handleStatusChange}
     />
     <TopProducts title="Top 5 productos" items={vm.topProductsByChannel('Mercado Libre')} />

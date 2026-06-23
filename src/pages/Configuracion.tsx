@@ -9,60 +9,9 @@ const ML_APP_ID = import.meta.env.VITE_ML_APP_ID as string | undefined;
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : '';
 const ML_CALLBACK_URL = `https://${projectRef}.supabase.co/functions/v1/ml-oauth-callback`;
-const ML_WEBHOOK_URL = `https://${projectRef}.supabase.co/functions/v1/ml-webhook`;
 const ML_AUTH_URL = ML_APP_ID
   ? `https://auth.mercadolibre.cl/authorization?response_type=code&client_id=${ML_APP_ID}&redirect_uri=${encodeURIComponent(ML_CALLBACK_URL)}&scope=read+offline_access`
   : '';
-
-const STEPS = [
-  {
-    title: 'Registra tu aplicación en ML Developers',
-    desc: 'Ingresa a developers.mercadolibre.com, crea una cuenta y registra una nueva aplicación. Anota el App ID.',
-  },
-  {
-    title: 'Configura la URL de autorización (Redirect URI)',
-    desc: 'En la configuración de tu app ML, agrega esta URL como "Redirect URI":',
-    code: ML_CALLBACK_URL,
-  },
-  {
-    title: 'Configura el webhook',
-    desc: 'En "Notificaciones", agrega la siguiente URL y activa el topic "orders_v2":',
-    code: ML_WEBHOOK_URL,
-  },
-  {
-    title: 'Agrega el App ID al archivo .env',
-    desc: 'Abre el archivo .env en la raíz del proyecto y agrega la siguiente línea:',
-    code: 'VITE_ML_APP_ID=tu_app_id_aqui',
-  },
-  {
-    title: 'Despliega las Edge Functions en Supabase',
-    desc: 'Ejecuta estos comandos en la terminal del proyecto:',
-    code: [
-      'npx supabase link --project-ref ' + projectRef,
-      'npx supabase functions deploy ml-oauth-callback',
-      'npx supabase functions deploy ml-webhook',
-      '',
-      '# Configura los secretos (reemplaza los valores):',
-      'npx supabase secrets set ML_CLIENT_ID=<tu_app_id>',
-      'npx supabase secrets set ML_CLIENT_SECRET=<tu_client_secret>',
-      'npx supabase secrets set ML_REDIRECT_URI=' + ML_CALLBACK_URL,
-      'npx supabase secrets set APP_URL=http://localhost:5173',
-    ].join('\n'),
-  },
-  {
-    title: 'Aplica la migración de base de datos',
-    desc: 'Ejecuta el archivo SQL en el editor de Supabase (SQL Editor → New query):',
-    code: 'sql/migrations/003_ml_integration.sql',
-  },
-  {
-    title: 'Activa Realtime en Supabase',
-    desc: 'En el Dashboard de Supabase → Database → Publications → supabase_realtime, activa la tabla "ventas" para recibir órdenes en tiempo real.',
-  },
-  {
-    title: 'Conecta tu cuenta',
-    desc: 'Completados los pasos anteriores, haz clic en "Conectar con Mercado Libre". Serás redirigido a ML para autorizar el acceso.',
-  },
-];
 
 const Configuracion: React.FC = () => {
   const [status, setStatus] = useState<ConnectionStatus>('loading');
@@ -108,9 +57,11 @@ const Configuracion: React.FC = () => {
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
-      await supabase.rpc('disconnect_ml');
-      setStatus('disconnected');
-      setMlInfo(null);
+      // Edge Function: borra credenciales con service_role y revoca en ML.
+      const { error } = await supabase.functions.invoke('ml-disconnect', { method: 'POST' });
+      if (error) throw error;
+      // Re-verificamos el estado real en vez de asumir que se desconectó.
+      await checkConnection();
       setAlert({ type: 'success', text: 'Cuenta de Mercado Libre desconectada.' });
     } catch {
       setAlert({ type: 'error', text: 'Error al desconectar la cuenta.' });
@@ -240,38 +191,6 @@ const Configuracion: React.FC = () => {
             )}
           </div>
         )}
-      </motion.div>
-
-      {/* Setup Guide */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.16 }}
-        className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
-      >
-        <h3 className="text-lg font-semibold text-slate-900">Guía de configuración</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Completa estos pasos una sola vez para activar la integración.
-        </p>
-
-        <ol className="mt-6 space-y-5">
-          {STEPS.map((step, i) => (
-            <li key={i} className="flex gap-4">
-              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-amber-700 text-xs font-bold text-white">
-                {i + 1}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-slate-900">{step.title}</div>
-                <div className="mt-0.5 text-sm text-slate-500">{step.desc}</div>
-                {step.code && (
-                  <pre className="mt-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-slate-200">
-                    {step.code}
-                  </pre>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
       </motion.div>
     </section>
   );

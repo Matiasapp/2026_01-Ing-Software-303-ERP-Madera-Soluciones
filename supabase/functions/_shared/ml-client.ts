@@ -157,6 +157,64 @@ export async function fetchMLOrder(orderId: string, accessToken: string): Promis
   return response.json()
 }
 
+export async function fetchMLShipment(shipmentId: string, accessToken: string): Promise<any> {
+  const response = await fetch(`${ML_API}/shipments/${shipmentId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Error al obtener envío ML #${shipmentId}: ${response.status}`)
+  }
+
+  return response.json()
+}
+
+// Estados de fulfillment que maneja el ERP.
+export type EstadoERP =
+  | 'Pendiente'
+  | 'En preparación'
+  | 'Despachado'
+  | 'Entregado'
+  | 'Cancelado'
+
+// Estado del ERP derivado del status de la ORDEN (notificaciones orders_v2).
+// Devuelve null para estados que no nos interesan (p.ej. pago en proceso).
+export function estadoFromOrderStatus(status: string): EstadoERP | null {
+  if (status === 'cancelled') return 'Cancelado'
+  if (status === 'paid' || status === 'partially_paid') return 'Pendiente'
+  return null
+}
+
+// Estado del ERP derivado del status del ENVÍO (notificaciones shipments).
+export function estadoFromShipmentStatus(status: string): EstadoERP | null {
+  switch (status) {
+    case 'ready_to_ship': return 'En preparación'
+    case 'shipped':       return 'Despachado'
+    case 'delivered':     return 'Entregado'
+    case 'cancelled':     return 'Cancelado'
+    default:              return null
+  }
+}
+
+// Actualiza el estado de la venta ML existente (match por ml_order_id).
+// Devuelve true si actualizó alguna fila, false si la venta aún no existe.
+export async function updateVentaEstado(
+  supabase: ReturnType<typeof createClient>,
+  mlOrderId: string,
+  estado: EstadoERP,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('ventas')
+    .update({ estado })
+    .eq('ml_order_id', mlOrderId)
+    .select('id')
+
+  if (error) {
+    throw new Error(`Error al actualizar estado de venta ML #${mlOrderId}: ${error.message}`)
+  }
+  return (data?.length ?? 0) > 0
+}
+
 type PublicacionInfo = { producto_id: number; costo_compra: number | null }
 
 // Carga el mapeo meli_item_id → { producto_id, costo_compra } para los items de

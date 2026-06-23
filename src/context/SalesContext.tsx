@@ -22,6 +22,10 @@ export type SalesItem = {
 export type SalesOrder = {
   id: number;
   fecha: string;
+  // Timestamp ISO de creación del registro (created_at). Aporta la hora, que
+  // `fecha` (solo día) no tiene. Opcional: en altas optimistas puede no estar
+  // hasta recargar.
+  createdAt?: string;
   canal: SalesChannel;
   referencia: string;
   cliente: string;
@@ -68,10 +72,22 @@ const SalesContext = createContext<SalesContextType | undefined>(undefined);
 
 const dateMonth = (date: string) => date.slice(0, 7);
 
-const getCurrentMonth = () => new Date().toISOString().slice(0, 7);
+// Fecha actual en hora de Chile (YYYY-MM-DD), independiente del huso horario del
+// dispositivo. Antes se usaba toISOString() (UTC), lo que hacía que cerca del
+// cambio de mes/día distintos equipos calcularan periodos distintos.
+const chileToday = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+const getCurrentMonth = () => chileToday().slice(0, 7);
 const getPreviousMonth = () => {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 1);
+  const [y, m] = chileToday().split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  d.setUTCMonth(d.getUTCMonth() - 1);
   return d.toISOString().slice(0, 7);
 };
 
@@ -126,6 +142,7 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const mapped: SalesOrder = {
               id: fullOrder.id,
               fecha: fullOrder.fecha,
+              createdAt: (fullOrder as any).created_at,
               canal: fullOrder.canal as SalesChannel,
               referencia: fullOrder.referencia,
               cliente: (fullOrder as any).clientes?.nombre ?? fullOrder.referencia,
@@ -134,10 +151,28 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               origen: fullOrder.origen,
               estado: (fullOrder.estado ?? 'Pendiente') as OrderStatus,
             };
-            setOrders(current => [mapped, ...current]);
+            setOrders(current =>
+              current.some(o => o.id === mapped.id) ? current : [mapped, ...current],
+            );
           } catch (err) {
             console.error('Error al recibir orden ML en tiempo real:', err);
           }
+        },
+      )
+      // El webhook actualiza el estado de la orden (envío/cancelación). Reflejamos
+      // ese cambio en vivo sin recargar.
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ventas', filter: 'canal=eq.Mercado Libre' },
+        (payload) => {
+          const updated = payload.new as { id: number; estado?: string };
+          setOrders(current =>
+            current.map(o =>
+              o.id === updated.id
+                ? { ...o, estado: (updated.estado ?? o.estado) as OrderStatus }
+                : o,
+            ),
+          );
         },
       )
       .subscribe();
@@ -154,6 +189,7 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const mappedOrders: SalesOrder[] = ventasData.map((row: any) => ({
         id: row.id,
         fecha: row.fecha,
+        createdAt: row.created_at,
         canal: row.canal as SalesChannel,
         referencia: row.referencia,
         cliente: row.clientes?.nombre ?? row.referencia,
@@ -200,7 +236,7 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const todaysOrders = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = chileToday();
     return orders.filter(order => order.fecha === today);
   }, [orders]);
 

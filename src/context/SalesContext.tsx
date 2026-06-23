@@ -17,6 +17,7 @@ export type SalesItem = {
   nombre: string;
   cantidad: number;
   monto: number;
+  producto_id?: number | null;
 };
 
 export type SalesOrder = {
@@ -116,6 +117,7 @@ const mapItems = (ventasItems: any[]): SalesItem[] =>
     nombre: item.nombre,
     cantidad: item.cantidad,
     monto: Number(item.subtotal ?? item.precio_unitario * item.cantidad),
+    producto_id: item.producto_id ?? null,
   }));
 
 export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -313,6 +315,7 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         nombre:          p.nombre,
         cantidad:        p.cantidad,
         precio_unitario: p.cantidad > 0 ? p.monto / p.cantidad : p.monto,
+        producto_id:     p.producto_id ?? null,
       })),
     });
 

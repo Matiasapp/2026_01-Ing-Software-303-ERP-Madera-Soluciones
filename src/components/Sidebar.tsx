@@ -34,12 +34,14 @@ const allLinks = [
   { to: '/ventas', label: 'Ventas', icon: SalesIcon },
   { to: '/clientes', label: 'Clientes', icon: UsersIcon },
   { to: '/estadisticas', label: 'Estadísticas', icon: StatsIcon },
+  { to: '/usuarios', label: 'Usuarios', icon: ShieldIcon },
   { to: '/configuracion', label: 'Configuración', icon: SettingsIcon },
 ];
 
-const adminOnly = new Set(['/inventario', '/estadisticas', '/configuracion']);
+const adminOnly = new Set(['/inventario', '/estadisticas', '/usuarios', '/configuracion']);
 
 const permissions: Record<string, string[]> = {
+  superadmin: allLinks.map(l => l.to),
   admin: allLinks.map(l => l.to),
   operator: allLinks.filter(l => !adminOnly.has(l.to)).map(l => l.to),
 };
@@ -192,6 +194,20 @@ function SalesIcon({ active }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function ShieldIcon({ active }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${active ? 'text-white' : ''}`}>
+      <path
+        d="M12 3 5 6v5c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6l-7-3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-type Role = 'admin' | 'operator';
+type Role = 'superadmin' | 'admin' | 'operator';
 
 type User = {
   email: string;
@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextType>({
 
 const roleFromMetadata = (metadata: Record<string, unknown> | null): Role => {
   const role = metadata?.role;
-  return role === 'admin' || role === 'operator' ? role : 'operator';
+  return role === 'superadmin' || role === 'admin' || role === 'operator' ? role : 'operator';
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

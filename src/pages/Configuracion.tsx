@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import ImportPublicacionesModal, {
+  type UnmatchedPub,
+} from '../components/ImportPublicacionesModal';
 
 type ConnectionStatus = 'loading' | 'connected' | 'disconnected';
 type Alert = { type: 'success' | 'error'; text: string };
@@ -18,6 +21,9 @@ const Configuracion: React.FC = () => {
   const [mlInfo, setMlInfo] = useState<{ sellerId: string; updatedAt: string } | null>(null);
   const [alert, setAlert] = useState<Alert | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [unmatched, setUnmatched] = useState<UnmatchedPub[]>([]);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -27,7 +33,10 @@ const Configuracion: React.FC = () => {
       window.history.replaceState({}, '', '/configuracion');
     } else if (mlParam === 'error') {
       const reason = params.get('reason') ?? 'desconocido';
-      setAlert({ type: 'error', text: `Error al conectar con Mercado Libre: ${reason.replace(/_/g, ' ')}.` });
+      setAlert({
+        type: 'error',
+        text: `Error al conectar con Mercado Libre: ${reason.replace(/_/g, ' ')}.`,
+      });
       window.history.replaceState({}, '', '/configuracion');
     }
     checkConnection();
@@ -52,6 +61,36 @@ const Configuracion: React.FC = () => {
 
   const handleConnect = () => {
     if (ML_AUTH_URL) window.location.href = ML_AUTH_URL;
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setAlert(null);
+    try {
+      // Edge Function: trae las publicaciones de ML y las vincula a productos por SKU.
+      const { data, error } = await supabase.functions.invoke('ml-sync-publicaciones', {
+        method: 'POST',
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error ?? 'sync_failed');
+
+      const { vinculadas, sin_vincular, total_publicaciones } = data;
+      setUnmatched((data.detalle_sin_vincular ?? []) as UnmatchedPub[]);
+      setAlert({
+        type: 'success',
+        text:
+          total_publicaciones === 0
+            ? 'No se encontraron publicaciones en tu cuenta de Mercado Libre. ' +
+              'Verifica que tengas publicaciones activas y que la cuenta conectada sea la correcta.'
+            : `Sincronización lista: ${vinculadas} de ${total_publicaciones} publicaciones ` +
+              `vinculadas a un producto. ${sin_vincular} sin vincular` +
+              (sin_vincular > 0 ? ' (usá "Revisar sin vincular" para resolverlas).' : '.'),
+      });
+    } catch {
+      setAlert({ type: 'error', text: 'Error al sincronizar las publicaciones de Mercado Libre.' });
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -141,7 +180,11 @@ const Configuracion: React.FC = () => {
                   : 'bg-slate-100 text-slate-500'
             }`}
           >
-            {status === 'connected' ? 'Conectado' : status === 'loading' ? 'Verificando…' : 'No conectado'}
+            {status === 'connected'
+              ? 'Conectado'
+              : status === 'loading'
+                ? 'Verificando…'
+                : 'No conectado'}
           </span>
         </div>
 
@@ -163,13 +206,30 @@ const Configuracion: React.FC = () => {
                 </div>
               </div>
             </div>
-            <button
-              onClick={handleDisconnect}
-              disabled={disconnecting}
-              className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 disabled:opacity-50"
-            >
-              {disconnecting ? 'Desconectando…' : 'Desconectar cuenta'}
-            </button>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition duration-200 hover:-translate-y-0.5 hover:bg-amber-100 disabled:opacity-50"
+              >
+                {syncing ? 'Sincronizando…' : 'Sincronizar publicaciones'}
+              </button>
+              {unmatched.length > 0 && (
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50"
+                >
+                  Revisar sin vincular ({unmatched.length})
+                </button>
+              )}
+              <button
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition duration-200 hover:-translate-y-0.5 hover:bg-rose-100 disabled:opacity-50"
+              >
+                {disconnecting ? 'Desconectando…' : 'Desconectar cuenta'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -185,13 +245,37 @@ const Configuracion: React.FC = () => {
                 onClick={handleConnect}
                 className="inline-flex items-center gap-2 rounded-2xl bg-[#FFE600] px-5 py-3 text-sm font-black text-[#333] shadow-[0_8px_20px_rgba(255,230,0,0.3)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(255,230,0,0.45)]"
               >
-                <span className="text-base">ML</span>
-                Conectar con Mercado Libre
+                <span className="text-base">Conectar con Mercado Libre</span>
               </button>
             )}
           </div>
         )}
       </motion.div>
+
+      {showImport && (
+        <ImportPublicacionesModal
+          publicaciones={unmatched}
+          onClose={() => setShowImport(false)}
+          onImported={result => {
+            setShowImport(false);
+            const importadosIds = new Set<string>();
+            // Quitamos de la lista local las que ya se procesaron sin error.
+            const conError = new Set(result.errores.map(e => e.meli_item_id));
+            for (const pub of unmatched) {
+              if (!conError.has(pub.meli_item_id)) importadosIds.add(pub.meli_item_id);
+            }
+            setUnmatched(prev => prev.filter(p => !importadosIds.has(p.meli_item_id)));
+            setAlert({
+              type: result.errores.length > 0 ? 'error' : 'success',
+              text:
+                `Importación: ${result.creados} producto(s) creado(s), ` +
+                `${result.vinculados} publicación(es) vinculada(s).` +
+                (result.errores.length > 0 ? ` ${result.errores.length} con error.` : ''),
+            });
+            if (result.errores.length > 0) console.table(result.errores);
+          }}
+        />
+      )}
     </section>
   );
 };

@@ -10,6 +10,7 @@ import Ventas from './pages/Ventas';
 import Clientes from './pages/Clientes';
 import Configuracion from './pages/Configuracion';
 import Estadisticas from './pages/Estadisticas';
+import Usuarios from './pages/Usuarios';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { InventoryProvider } from './context/InventoryContext';
@@ -89,6 +90,14 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute requiredRole="admin">
               <Configuracion />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="usuarios"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <Usuarios />
             </ProtectedRoute>
           }
         />

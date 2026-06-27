@@ -8,6 +8,7 @@ import {
   useInventory,
 } from '../../context/InventoryContext';
 import { useNotification } from '../../context/NotificationContext';
+import { contarReferenciasProducto } from '../../lib/supabase-queries';
 import { formatPhone } from '../../lib/format';
 import { initialMovementForm, initialProductForm, initialSupplierForm } from './constants';
 import type {
@@ -410,38 +411,57 @@ export function useInventarioPage() {
     }
   };
 
+  // Ofrece descontinuar (soft-delete) un producto que no se puede borrar porque
+  // tiene historial. Conserva ventas y movimientos sacándolo del catálogo activo.
+  const ofrecerDescontinuar = async (product: Product) => {
+    if (product.estado === 'descontinuado') {
+      notifyError(
+        `${product.nombre} tiene ventas o movimientos asociados y ya está descontinuado; no puede eliminarse.`
+      );
+      return;
+    }
+    const descontinuar = window.confirm(
+      `No se puede eliminar ${product.nombre} porque tiene ventas o movimientos asociados.\n\n` +
+        `¿Marcarlo como "descontinuado" para sacarlo del catálogo activo conservando el historial?`
+    );
+    if (!descontinuar) return;
+    try {
+      await updateProduct(product.id, { estado: 'descontinuado' });
+      success(`${product.nombre} marcado como descontinuado.`);
+    } catch {
+      notifyError('No se pudo descontinuar el producto. Intenta nuevamente.');
+    }
+  };
+
   const confirmDeleteProduct = async (product: Product) => {
+    // La FK de ventas_items.producto_id es ON DELETE SET NULL, así que un delete
+    // directo no fallaría: dejaría ventas huérfanas. Verificamos el historial antes
+    // de borrar para impedirlo y ofrecer el soft-delete (descontinuar).
+    let referencias: { ventas: number; movimientos: number; total: number };
+    try {
+      referencias = await contarReferenciasProducto(product.id);
+    } catch {
+      notifyError('No se pudo verificar el historial del producto. Intenta nuevamente.');
+      return;
+    }
+    if (referencias.total > 0) {
+      await ofrecerDescontinuar(product);
+      return;
+    }
+
     if (!window.confirm(`¿Eliminar ${product.nombre}? Esta acción no se puede deshacer.`)) return;
     try {
       await deleteProduct(product.id);
       if (selectedProductId === product.id) setSelectedProductId(products[0]?.id ?? 0);
       success(`Producto ${product.nombre} eliminado correctamente.`);
     } catch (err) {
-      // 23503 = foreign_key_violation: el producto tiene ventas o movimientos.
-      // No se puede borrar sin romper el historial, así que ofrecemos el soft-delete
-      // (descontinuar) en vez de dejar al usuario en un callejón sin salida.
-      const isFkViolation = (err as { code?: string })?.code === '23503';
-      if (!isFkViolation) {
-        notifyError('No se pudo eliminar el producto. Intenta nuevamente.');
+      // 23503 = foreign_key_violation: cubre cualquier otra referencia (p. ej.
+      // publicaciones ML) que aparezca entre la verificación y el borrado.
+      if ((err as { code?: string })?.code === '23503') {
+        await ofrecerDescontinuar(product);
         return;
       }
-      if (product.estado === 'descontinuado') {
-        notifyError(
-          `${product.nombre} tiene ventas o movimientos asociados y ya está descontinuado; no puede eliminarse.`
-        );
-        return;
-      }
-      const descontinuar = window.confirm(
-        `No se puede eliminar ${product.nombre} porque tiene ventas o movimientos asociados.\n\n` +
-          `¿Marcarlo como "descontinuado" para sacarlo del catálogo activo conservando el historial?`
-      );
-      if (!descontinuar) return;
-      try {
-        await updateProduct(product.id, { estado: 'descontinuado' });
-        success(`${product.nombre} marcado como descontinuado.`);
-      } catch {
-        notifyError('No se pudo descontinuar el producto. Intenta nuevamente.');
-      }
+      notifyError('No se pudo eliminar el producto. Intenta nuevamente.');
     }
   };
 

@@ -268,6 +268,29 @@ export async function updateVentaEstado(id: number, estado: string) {
   if (error) throw error;
 }
 
+// Cuenta cuántas ventas y movimientos referencian al producto. Sirve para impedir
+// el borrado cuando hay historial: la FK de ventas_items.producto_id es ON DELETE
+// SET NULL, así que un delete directo no falla pero deja ventas huérfanas.
+export async function contarReferenciasProducto(id: number) {
+  const [ventas, movimientos] = await Promise.all([
+    supabase
+      .from('ventas_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('producto_id', id),
+    supabase
+      .from('movimientos_stock')
+      .select('id', { count: 'exact', head: true })
+      .eq('producto_id', id),
+  ]);
+  if (ventas.error) throw ventas.error;
+  if (movimientos.error) throw movimientos.error;
+  return {
+    ventas: ventas.count ?? 0,
+    movimientos: movimientos.count ?? 0,
+    total: (ventas.count ?? 0) + (movimientos.count ?? 0),
+  };
+}
+
 export async function deleteProducto(id: number) {
   const { error } = await supabase.from('productos').delete().eq('id', id);
   if (error) throw error;
